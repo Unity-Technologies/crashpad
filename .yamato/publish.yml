@@ -1,9 +1,10 @@
 name: 'Build & Publish Crashpad to Stevedore'
 
 agent:
+  image: automation-tooling/macos-15-arm64-unity:v2.5604104
   type: Unity::VM::osx
-  image: automation-tooling/macos-15-arm64-unity:v2.5604104-pinned
-  flavor: b1.medium
+  flavor: b1.xlarge
+  model: M1
 
 # Triggered manually by a res-crashes team member when a new artifact version
 # is needed. No automatic triggers (see tasks.md Task 2).
