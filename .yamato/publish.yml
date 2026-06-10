@@ -1,0 +1,27 @@
+name: 'Build & Publish Crashpad to Stevedore'
+
+agent:
+  type: Unity::VM::osx
+  image: platform-foundation/mac-bokken:latest
+  flavor: m1.mac
+
+# Triggered manually by a res-crashes team member when a new artifact version
+# is needed. No automatic triggers (see tasks.md Task 2).
+commands:
+  - chmod +x .yamato/scripts/*.sh .yamato/pack-stevedore.sh
+  - .yamato/scripts/build-and-pack.sh
+  - .yamato/scripts/tag-and-push.sh
+  - .yamato/scripts/upload-to-stevedore.sh
+
+# Required secret groups (configure in the Yamato project Settings UI):
+#   - stevedore-upload-v2          : provides STEVEDORE_UPLOAD_TOOL_MAC_X64_URL
+#   - crashpad-stevedore-key       : provides STEVEDORE_UPLOAD_KEY
+#   - crashpad-github-push         : provides GH_PUSH_TOKEN (write access to
+#                                    Unity-Technologies/crashpad, for pushing
+#                                    the unity-<hash> tag)
+
+artifacts:
+  stevedore:
+    paths:
+      - out/dist/artifactids.txt
+      - out/dist/tag.txt
