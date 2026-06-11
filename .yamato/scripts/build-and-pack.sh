@@ -10,6 +10,11 @@ set -euxo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CRASHPAD_SRC="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
+# --- 7zip (required by pack-stevedore.sh) ---
+if ! command -v 7z >/dev/null 2>&1; then
+    HOMEBREW_NO_AUTO_UPDATE=1 brew install p7zip
+fi
+
 # --- depot_tools (gn, ninja, gclient) ---
 if ! command -v gn >/dev/null 2>&1; then
     DEPOT_TOOLS="$HOME/depot_tools"
