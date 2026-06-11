@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # pack-stevedore.sh — assemble the Stevedore artifact(s) for Unity's macOS
-# Crashpad consumer. Produces crashpad-mac-arm64.7z and crashpad-mac-x64.7z
+# Crashpad consumer. Produces crashpad-unity-mac-arm64.7z and crashpad-unity-mac-x64.7z
 # matching the layout Unity's build code expects.
 #
 # Archive layout produced (per arch):
@@ -37,6 +37,13 @@ FORK_URL="${FORK_URL:-https://github.com/Unity-Technologies/crashpad}"
 if [[ -z "${VERSION:-}" ]]; then
     VERSION="$(cd "$CRASHPAD_SRC" && git rev-parse --short=12 HEAD 2>/dev/null || echo dev)"
 fi
+
+# Discover the upstream Crashpad commit this fork was rebased onto.
+# Convention: $UPSTREAM_REF (default origin/main) mirrors upstream Crashpad
+# pristine; Unity work lives on branches rebased on top. `git merge-base`
+# finds the most recent common ancestor — the upstream baseline.
+UPSTREAM_REF="${UPSTREAM_REF:-origin/main}"
+UPSTREAM_BASE="$(cd "$CRASHPAD_SRC" && git merge-base HEAD "$UPSTREAM_REF" 2>/dev/null | cut -c 1-12 || true)"
 
 mkdir -p "$OUTPUT_DIR"
 
@@ -96,7 +103,7 @@ pack_one_arch() {
     local arch="$1"      # arm64 or x86_64
     local arch_tag="$2"  # arm64 or x64 (used in artifact name)
     local build_dir="$3"
-    local archive_name="crashpad-mac-${arch_tag}.7z"
+    local archive_name="crashpad-unity-mac-${arch_tag}.7z"
 
     if [[ ! -d "$build_dir" ]]; then
         echo "ERROR: build dir not found: $build_dir" >&2
@@ -119,6 +126,14 @@ pack_one_arch() {
         printf 'This artifact contains a Unity-modified version of Crashpad\n'
         printf '(https://chromium.googlesource.com/crashpad/crashpad).\n'
         printf 'Modifications maintained at: %s\n\n' "$FORK_URL"
+        printf 'Build provenance:\n'
+        printf '  Fork HEAD:         %s\n' "$VERSION"
+        if [[ -n "$UPSTREAM_BASE" ]]; then
+            printf '  Upstream baseline: %s\n' "$UPSTREAM_BASE"
+            printf '  Modifications:     %s/compare/%s...%s\n\n' "$FORK_URL" "$UPSTREAM_BASE" "$VERSION"
+        else
+            printf '  Upstream baseline: <not available — upstream-mirror ref not found>\n\n'
+        fi
         printf 'Crashpad is licensed under the Apache License, Version 2.0; see LICENSE.\n\n'
         printf -- '----------------------------------------------------------------------\n'
         printf 'Third-party components statically linked into shipped libraries:\n'
@@ -170,14 +185,6 @@ EOF
         fi
     done
 
-    # Optional getopt headers (Windows fallback; included for parity with the
-    # old builds.zip layout — not linked on macOS, but cheap insurance against
-    # future Crashpad header chains pulling them in).
-    if [[ -d "$CRASHPAD_SRC/third_party/getopt" ]]; then
-        mkdir -p "$stage/include/third_party/getopt"
-        cp "$CRASHPAD_SRC/third_party/getopt"/*.h "$stage/include/third_party/getopt/" 2>/dev/null || true
-    fi
-
     # --- src/  (only the .cc files Unity compiles) ---
     for relsrc in "${UNITY_SOURCES[@]}"; do
         local from="$CRASHPAD_SRC/$relsrc"
@@ -219,7 +226,7 @@ EOF
 
     # --- Stevedore-style artifact ID (informational) ---
     local sha; sha="$(shasum -a 256 "$OUTPUT_DIR/$archive_name" | awk '{print $1}')"
-    echo "    artifact id: crashpad-mac-${arch_tag}/${VERSION}_${sha}.7z"
+    echo "    artifact id: crashpad-unity-mac-${arch_tag}/${VERSION}_${sha}.7z"
 }
 
 pack_one_arch arm64 arm64 "$ARM64_BUILD"
