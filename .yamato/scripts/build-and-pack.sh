@@ -43,6 +43,17 @@ fi
 
 (cd "$GCLIENT_PARENT" && gclient sync --no-history)
 
+# --- Ensure origin/main is available for upstream-baseline detection ---
+# Yamato typically does a shallow / branch-only clone. pack-stevedore.sh
+# runs `git merge-base HEAD origin/main` to compute the upstream baseline
+# embedded in NOTICE; both refs need enough shared history visible locally.
+# Unshallow first (no-op on full clones), then fetch the upstream-mirror ref.
+(
+    cd "$CRASHPAD_SRC"
+    git fetch --no-tags --unshallow 2>/dev/null || true
+    git fetch --no-tags origin main:refs/remotes/origin/main 2>/dev/null || true
+)
+
 # --- Build both architectures ---
 cd "$CRASHPAD_SRC"
 
