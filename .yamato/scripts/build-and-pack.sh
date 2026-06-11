@@ -67,34 +67,3 @@ ninja -C out/x64-release
 export FORK_URL="https://github.com/Unity-Technologies/crashpad"
 "$SCRIPT_DIR/../pack-stevedore.sh"
 
-# --- TEMP: preview Yamato Results-tab rendering with dummy IDs ---
-# Remove once we like the look; then move the real post into the proper place.
-if [[ -n "${YAMATO_REPORTING_SERVER:-}" ]]; then
-    STEVEDORE_REPO="${STEVEDORE_REPO:-testing}" \
-    python3 - "$YAMATO_REPORTING_SERVER/result" <<'PY'
-import json, os, sys, urllib.request
-url = sys.argv[1]
-repo = os.environ["STEVEDORE_REPO"]
-body = {
-    "title": f"Stevedore artifact IDs (preview, {repo})",
-    "summary": (
-        f"Uploaded to Stevedore ({repo}):\n\n"
-        "```\n"
-        f"{repo}: crashpad-unity-mac-arm64/abc123def456_1111111111111111111111111111111111111111111111111111111111111111.7z\n"
-        f"{repo}: crashpad-unity-mac-x64/abc123def456_2222222222222222222222222222222222222222222222222222222222222222.7z\n"
-        "```\n"
-    ),
-    "conclusion": "success",
-    "resultType": "userFriendly",
-    "tags": ["stevedore"],
-}
-req = urllib.request.Request(
-    url,
-    data=json.dumps(body).encode(),
-    headers={"Content-Type": "application/json"},
-    method="POST",
-)
-with urllib.request.urlopen(req) as resp:
-    print(f"==> Posted Yamato result preview ({resp.status})")
-PY
-fi
