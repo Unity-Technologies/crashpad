@@ -1,29 +1,37 @@
-name: 'Build & Publish Crashpad to Stevedore'
+{% assign repos = "testing public" | split: " " %}
 
-agent:
-  image: automation-tooling/macos-15-arm64-unity:v2.5604104
-  type: Unity::VM::osx
-  flavor: b1.xlarge
-  model: M1
+{% for repo in repos %}
+publish_{{repo}}:
+  name: 'Build & Publish Crashpad to Stevedore ({{repo}})'
 
-# Triggered manually by a res-crashes team member when a new artifact version
-# is needed. No automatic triggers (see tasks.md Task 2).
-commands:
-  - chmod +x .yamato/scripts/*.sh .yamato/pack-stevedore.sh
-  - .yamato/scripts/build-and-pack.sh
-  # tag-and-push.sh deferred: needs a GitHub write credential for the fork;
-  # tag manually for now until the credential question is resolved.
-  - .yamato/scripts/upload-to-stevedore.sh
+  agent:
+    image: automation-tooling/macos-15-arm64-unity:v2.5604104
+    type: Unity::VM::osx
+    flavor: b1.xlarge
+    model: M1
 
-# Required secret groups (configure in the Yamato project Settings UI):
-#   - stevedore-upload-v2          : provides STEVEDORE_UPLOAD_TOOL_MAC_X64_URL
-#   - crashpad-stevedore-key       : provides STEVEDORE_UPLOAD_KEY
+  # Triggered manually by a res-crashes team member when a new artifact version
+  # is needed. No automatic triggers.
+  commands:
+    - chmod +x .yamato/scripts/*.sh .yamato/pack-stevedore.sh
+    - STEVEDORE_REPO={{repo}} .yamato/scripts/build-and-pack.sh
+    # tag-and-push.sh deferred: needs a GitHub write credential for the fork;
+    # tag manually for now until the credential question is resolved.
+    - STEVEDORE_REPO={{repo}} .yamato/scripts/upload-to-stevedore.sh
 
-artifacts:
-  stevedore:
-    paths:
-      - out/dist/artifactids.txt
-  archives:
-    paths:
-      - out/dist/crashpad-unity-mac-arm64.7z
-      - out/dist/crashpad-unity-mac-x64.7z
+  # Required secret groups (configure in the Yamato project Settings UI):
+  #   - stevedore-upload-v2          : provides STEVEDORE_UPLOAD_TOOL_MAC_X64_URL
+  #   - crashpad-stevedore-key       : provides STEVEDORE_UPLOAD_KEY
+  # NOTE: the upload key must be authorized for the target repo. For `public`
+  # this requires a separate Stevedore-admin approval; until then publish_public
+  # will fail at the upload step.
+
+  artifacts:
+    stevedore:
+      paths:
+        - out/dist/artifactids.txt
+    archives:
+      paths:
+        - out/dist/crashpad-unity-mac-arm64.7z
+        - out/dist/crashpad-unity-mac-x64.7z
+{% endfor %}
