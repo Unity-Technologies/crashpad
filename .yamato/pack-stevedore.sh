@@ -214,7 +214,7 @@ EOF
 
     # --- Pack ---
     rm -f "$OUTPUT_DIR/$archive_name"
-    (cd "$stage" && 7z a -bd "$OUTPUT_DIR/$archive_name" -r LICENSE NOTICE AUTHORS README.txt include src gen lib >/dev/null)
+    (cd "$stage" && 7z a -bd -xr'!.DS_Store' "$OUTPUT_DIR/$archive_name" -r LICENSE NOTICE AUTHORS README.txt include src gen lib >/dev/null)
     echo "    wrote $OUTPUT_DIR/$archive_name ($(du -h "$OUTPUT_DIR/$archive_name" | cut -f1))"
 
     # --- Stevedore-style artifact ID (informational) ---
