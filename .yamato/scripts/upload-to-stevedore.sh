@@ -29,8 +29,8 @@ VERSION="$(git rev-parse HEAD)"
     --version-len=12 \
     --version="$VERSION" \
     --append-manifest="$DIST/artifactids.txt" \
-    "$DIST/crashpad-mac-arm64.7z" \
-    "$DIST/crashpad-mac-x64.7z"
+    "$DIST/crashpad-unity-mac-arm64.7z" \
+    "$DIST/crashpad-unity-mac-x64.7z"
 
 echo "==> Uploaded. Artifact IDs:"
 cat "$DIST/artifactids.txt"

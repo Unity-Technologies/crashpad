@@ -25,5 +25,5 @@ artifacts:
       - out/dist/artifactids.txt
   archives:
     paths:
-      - out/dist/crashpad-mac-arm64.7z
-      - out/dist/crashpad-mac-x64.7z
+      - out/dist/crashpad-unity-mac-arm64.7z
+      - out/dist/crashpad-unity-mac-x64.7z
