@@ -35,22 +35,22 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CRASHPAD_SRC="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$CRASHPAD_SRC"
 
-# Agents are heterogeneous: some carry an `insteadOf` rewrite in their global
-# git config that routes github.com fetches through a read-only cache proxy
-# (which 403s our bearer token), others don't (and reject anonymous fetches
-# of this repo, asking for a username). To work uniformly: send our token on
-# every operation and skip the agent's global/system git config so insteadOf
-# can't redirect us. -c keeps the auth header in-memory (no on-disk artifact).
-GIT_AUTH=(-c "http.extraheader=Authorization: bearer $GH_PUSH_TOKEN")
-FORK_URL="${FORK_URL:-https://github.com/Unity-Technologies/crashpad}"
-gh_git() {
-    GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
-        git "${GIT_AUTH[@]}" "$@"
-}
+# Auth via URL-embedded Basic credentials (token-as-password, x-access-token
+# as username -- the standard GitHub pattern). This works on all agent
+# variants we've seen: with insteadOf, the host gets rewritten to the
+# bandwidth cache, which accepts Basic Auth fine; with pushInsteadOf, the
+# push lands direct on github.com, which also accepts it. We previously
+# tried `http.extraheader: Bearer` but the cache 403s that specific scheme.
+#
+# `credential.helper=` (empty) disables any inherited credential helper so
+# git doesn't try to cache the embedded creds (the agent's macOS Keychain
+# helper fails with -25308 on locked keychain; harmless, just log noise).
+FORK_URL_AUTHED="https://x-access-token:${GH_PUSH_TOKEN}@github.com/Unity-Technologies/crashpad"
+GIT=(git -c credential.helper=)
 
 # Yamato shallow-clones a single ref; bring in main + all tags.
-gh_git fetch --no-tags "$FORK_URL" main:refs/remotes/origin/main
-gh_git fetch --tags "$FORK_URL"
+"${GIT[@]}" fetch --no-tags "$FORK_URL_AUTHED" main:refs/remotes/origin/main
+"${GIT[@]}" fetch --tags "$FORK_URL_AUTHED"
 
 UPSTREAM_HASH="$(git rev-parse --short=12 origin/main)"
 DATE="$(date -u +%Y.%m.%d)"
@@ -90,7 +90,7 @@ else
 fi
 
 git tag "$TAG" HEAD
-gh_git push "$FORK_URL" "refs/tags/$TAG"
+"${GIT[@]}" push "$FORK_URL_AUTHED" "refs/tags/$TAG"
 
 echo "$TAG" > out/dist/tag.txt
 echo "==> Pushed tag: $TAG"
