@@ -1,13 +1,21 @@
 # Yamato jobs for the Unity Crashpad fork.
 #
-# publish_testing -- iterative builds, uploaded to Stevedore `testing`. No git
-#                    tag is created; testing artifacts are content-addressed by
-#                    fork HEAD SHA, distinguished by Stevedore's content hash.
+# publish_testing -- iterative builds, uploaded to Stevedore `testing`.
+#                    Testing artifacts are content-addressed by fork HEAD SHA
+#                    and distinguished by Stevedore's content hash, so no tag
+#                    is needed for the artifact itself. Setting TAG_TESTING=1
+#                    at trigger time additionally pushes a staging-YYYY.MM.DD-
+#                    <upstream-12char>[-N] tag -- used to exercise the tag-
+#                    and-push pipeline end-to-end without touching the
+#                    customer-facing `unity-*` namespace.
 #
 # publish_public  -- canonical release from unity/main. Builds, creates and
 #                    pushes a unity-YYYY.MM.DD-<upstream-12char>[-N] tag, then
 #                    uploads to Stevedore `public`. Customer-facing; public
 #                    artifacts are immutable.
+#
+# The `staging-*` and `unity-*` tag namespaces are deliberately non-overlapping
+# so the tag-and-push counter glob in each job sees only its own history.
 #
 # Both jobs are triggered manually by a res-crashes team member.
 
@@ -20,19 +28,35 @@ publish_testing:
     flavor: b1.xlarge
     model: M1
 
+  # TAG_TESTING: empty (default) skips the tag-and-push step. Set to any
+  # non-empty value at trigger time (via the Yamato "Run Job" dialog) to
+  # exercise the tag pipeline; tags use the `staging-` prefix and live in
+  # a namespace disjoint from customer-facing `unity-*` tags.
+  variables:
+    TAG_TESTING: ""
+
   commands:
     - chmod +x .yamato/scripts/*.sh .yamato/pack-stevedore.sh
     - STEVEDORE_REPO=testing .yamato/scripts/build-and-pack.sh
+    - |
+      if [[ -n "${TAG_TESTING:-}" ]]; then
+          TAG_PREFIX=staging .yamato/scripts/tag-and-push.sh
+      else
+          echo "TAG_TESTING not set; skipping tag-and-push."
+      fi
     - STEVEDORE_REPO=testing .yamato/scripts/upload-to-stevedore.sh
 
   # Required secret groups (configure in the Yamato project Settings UI):
   #   - stevedore-upload-v2     : STEVEDORE_UPLOAD_TOOL_MAC_X64_URL
   #   - crashpad-stevedore-key  : STEVEDORE_UPLOAD_KEY (must be authorized for testing)
+  #   - crashpad-github-push    : GH_PUSH_TOKEN (repo:write on the fork; only
+  #                               consumed when TAG_TESTING is set)
 
   artifacts:
     stevedore:
       paths:
         - out/dist/artifactids.txt
+        - out/dist/tag.txt
     archives:
       paths:
         - out/dist/crashpad-unity-mac-arm64.7z
@@ -62,7 +86,7 @@ publish_public:
       fi
     - chmod +x .yamato/scripts/*.sh .yamato/pack-stevedore.sh
     - STEVEDORE_REPO=public .yamato/scripts/build-and-pack.sh
-    - .yamato/scripts/tag-and-push.sh
+    - TAG_PREFIX=unity .yamato/scripts/tag-and-push.sh
     - STEVEDORE_REPO=public .yamato/scripts/upload-to-stevedore.sh
 
   # Required secret groups (configure in the Yamato project Settings UI):
