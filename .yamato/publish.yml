@@ -28,21 +28,21 @@ publish_testing:
     flavor: b1.xlarge
     model: M1
 
-  # TAG_TESTING: empty (default) skips the tag-and-push step. Set to any
-  # non-empty value at trigger time (via the Yamato "Run Job" dialog) to
-  # exercise the tag pipeline; tags use the `staging-` prefix and live in
-  # a namespace disjoint from customer-facing `unity-*` tags.
+  # TAG_TESTING: "0" (default) skips the tag-and-push step. Set to "1" at
+  # trigger time (via the Yamato "Run Job" dialog) to exercise the tag
+  # pipeline; tags use the `staging-` prefix and live in a namespace disjoint
+  # from customer-facing `unity-*` tags.
   variables:
-    TAG_TESTING: ""
+    TAG_TESTING: "0"
 
   commands:
     - chmod +x .yamato/scripts/*.sh .yamato/pack-stevedore.sh
     - STEVEDORE_REPO=testing .yamato/scripts/build-and-pack.sh
     - |
-      if [[ -n "${TAG_TESTING:-}" ]]; then
+      if [[ "${TAG_TESTING}" == "1" ]]; then
           TAG_PREFIX=staging .yamato/scripts/tag-and-push.sh
       else
-          echo "TAG_TESTING not set; skipping tag-and-push."
+          echo "TAG_TESTING=${TAG_TESTING}; skipping tag-and-push."
       fi
     - STEVEDORE_REPO=testing .yamato/scripts/upload-to-stevedore.sh
 
