@@ -35,20 +35,12 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CRASHPAD_SRC="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$CRASHPAD_SRC"
 
-# All git operations need the token: Yamato's clone credentials don't
-# propagate to fetch/push from inside the script. -c keeps the header
-# in-memory only (no on-disk .gitconfig artifact).
-GIT_AUTH=(-c "http.extraheader=Authorization: bearer $GH_PUSH_TOKEN")
-
-# Target the real github.com URL explicitly. Yamato's agents rewrite `origin`
-# to a read-only cache proxy (github-com-cache.bf.unity3d.com) which 403s
-# requests carrying github.com bearer tokens. The cache only saves bandwidth;
-# our two ref fetches and single tag push are small enough not to care.
-FORK_URL="${FORK_URL:-https://github.com/Unity-Technologies/crashpad}"
-
-# Yamato shallow-clones a single ref; bring in main + all tags.
-git "${GIT_AUTH[@]}" fetch --no-tags "$FORK_URL" main:refs/remotes/origin/main
-git "${GIT_AUTH[@]}" fetch --tags "$FORK_URL"
+# Yamato shallow-clones a single ref; bring in main + all tags. Fetches are
+# anonymous: the agent's git config rewrites github.com -> a read-only cache
+# proxy (insteadOf), which 403s requests carrying a github.com bearer token
+# but serves anonymous reads of public repos fine -- which is what we need.
+git fetch --no-tags origin main:refs/remotes/origin/main
+git fetch --tags origin
 
 UPSTREAM_HASH="$(git rev-parse --short=12 origin/main)"
 DATE="$(date -u +%Y.%m.%d)"
@@ -88,7 +80,11 @@ else
 fi
 
 git tag "$TAG" HEAD
-git "${GIT_AUTH[@]}" push "$FORK_URL" "refs/tags/$TAG"
+# Push needs auth. The agent's `pushInsteadOf` undoes the read-side cache
+# rewrite for pushes, so this goes direct to github.com where our bearer
+# token is accepted. -c keeps the header in-memory (no .gitconfig artifact).
+git -c "http.extraheader=Authorization: bearer $GH_PUSH_TOKEN" \
+    push origin "refs/tags/$TAG"
 
 echo "$TAG" > out/dist/tag.txt
 echo "==> Pushed tag: $TAG"
