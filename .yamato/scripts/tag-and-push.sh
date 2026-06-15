@@ -35,14 +35,20 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CRASHPAD_SRC="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$CRASHPAD_SRC"
 
-# All git operations against origin need the token: Yamato's clone credentials
-# don't propagate to fetch/push from inside the script. -c keeps the header
+# All git operations need the token: Yamato's clone credentials don't
+# propagate to fetch/push from inside the script. -c keeps the header
 # in-memory only (no on-disk .gitconfig artifact).
 GIT_AUTH=(-c "http.extraheader=Authorization: bearer $GH_PUSH_TOKEN")
 
+# Target the real github.com URL explicitly. Yamato's agents rewrite `origin`
+# to a read-only cache proxy (github-com-cache.bf.unity3d.com) which 403s
+# requests carrying github.com bearer tokens. The cache only saves bandwidth;
+# our two ref fetches and single tag push are small enough not to care.
+FORK_URL="${FORK_URL:-https://github.com/Unity-Technologies/crashpad}"
+
 # Yamato shallow-clones a single ref; bring in main + all tags.
-git "${GIT_AUTH[@]}" fetch --no-tags origin main:refs/remotes/origin/main
-git "${GIT_AUTH[@]}" fetch --tags origin
+git "${GIT_AUTH[@]}" fetch --no-tags "$FORK_URL" main:refs/remotes/origin/main
+git "${GIT_AUTH[@]}" fetch --tags "$FORK_URL"
 
 UPSTREAM_HASH="$(git rev-parse --short=12 origin/main)"
 DATE="$(date -u +%Y.%m.%d)"
@@ -82,7 +88,7 @@ else
 fi
 
 git tag "$TAG" HEAD
-git "${GIT_AUTH[@]}" push origin "refs/tags/$TAG"
+git "${GIT_AUTH[@]}" push "$FORK_URL" "refs/tags/$TAG"
 
 echo "$TAG" > out/dist/tag.txt
 echo "==> Pushed tag: $TAG"
