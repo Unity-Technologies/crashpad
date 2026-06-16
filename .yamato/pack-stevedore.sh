@@ -221,7 +221,11 @@ EOF
 
     # --- Pack ---
     rm -f "$OUTPUT_DIR/$archive_name"
-    (cd "$stage" && 7z a -bd -xr'!.DS_Store' "$OUTPUT_DIR/$archive_name" -r LICENSE NOTICE AUTHORS README.txt include src gen lib >/dev/null)
+    # -mtm/-mtc/-mta=off strip mtime/ctime/atime from archive entries so two
+    # packs of the same build outputs produce byte-identical .7z files. Without
+    # this, Stevedore content-hashes drift on every re-run because cp/tar stamp
+    # fresh mtimes into the staging tree.
+    (cd "$stage" && 7z a -bd -mtm=off -mtc=off -mta=off -xr'!.DS_Store' "$OUTPUT_DIR/$archive_name" -r LICENSE NOTICE AUTHORS README.txt include src gen lib >/dev/null)
     echo "    wrote $OUTPUT_DIR/$archive_name ($(du -h "$OUTPUT_DIR/$archive_name" | cut -f1))"
 
     # --- Stevedore-style artifact ID (informational) ---
