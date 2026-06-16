@@ -12,6 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/*
+ * MODIFICATION HISTORY:
+ * 2026-JUN-09 - Unity modification: exposed DatabasePath() as public so the
+ *               Unity post-minidump hook can pass the database path back to Unity.
+ * Licensed under the Apache License, Version 2.0
+ */
+
 #ifndef CRASHPAD_CLIENT_CRASH_REPORT_DATABASE_H_
 #define CRASHPAD_CLIENT_CRASH_REPORT_DATABASE_H_
 
@@ -429,11 +436,15 @@ class CrashReportDatabase {
  protected:
   CrashReportDatabase() = default;
 
+  // Unity modification: DatabasePath() exposed as public so the
+  // UnityCrashpadPostMinidumpHook can pass the database path back to Unity.
+ public:
   //! \brief The path to the database passed to Initialize.
   //!
   //! \return The filepath of the database;
   virtual base::FilePath DatabasePath() = 0;
 
+ protected:
   //! \brief Build a filepath for the root attachments directory.
   //!
   //! \return The filepath to the attachments directory.
