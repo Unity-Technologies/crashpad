@@ -25,6 +25,22 @@
 #   VERSION          version string for filenames   (default: short git SHA of fork)
 #   SKIP_X64=1       only build the arm64 archive
 #
+# Note on reproducibility: two runs of this script against the same build
+# outputs produce .7z files with *different* SHA256 hashes (and therefore
+# different Stevedore artifact IDs). The .o contents inside are identical,
+# but two layers of archive metadata vary between runs:
+#   1. 7z stores per-file mtime/ctime/atime; cp/tar in this script stamp
+#      "now" onto every staged file. Fix: pass `-mtm=off -mtc=off -mta=off`
+#      to `7z a` below.
+#   2. The .a static libraries themselves are ar archives whose per-member
+#      headers carry mtime/uid/gid from the build filesystem. Apple's
+#      libtool has no deterministic-output flag; the fix is to post-process
+#      each staged .a, walking the 60-byte member headers and zeroing the
+#      mtime[12]/uid[6]/gid[6] fields. ~15 lines of Python, no deps.
+# Neither fix is applied today because the current consumers don't require
+# reproducible byte-identical artifacts -- but if Stevedore deduplication
+# or supply-chain attestation ever becomes a requirement, those are the
+# two places to change.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -221,11 +237,7 @@ EOF
 
     # --- Pack ---
     rm -f "$OUTPUT_DIR/$archive_name"
-    # -mtm/-mtc/-mta=off strip mtime/ctime/atime from archive entries so two
-    # packs of the same build outputs produce byte-identical .7z files. Without
-    # this, Stevedore content-hashes drift on every re-run because cp/tar stamp
-    # fresh mtimes into the staging tree.
-    (cd "$stage" && 7z a -bd -mtm=off -mtc=off -mta=off -xr'!.DS_Store' "$OUTPUT_DIR/$archive_name" -r LICENSE NOTICE AUTHORS README.txt include src gen lib >/dev/null)
+    (cd "$stage" && 7z a -bd -xr'!.DS_Store' "$OUTPUT_DIR/$archive_name" -r LICENSE NOTICE AUTHORS README.txt include src gen lib >/dev/null)
     echo "    wrote $OUTPUT_DIR/$archive_name ($(du -h "$OUTPUT_DIR/$archive_name" | cut -f1))"
 
     # --- Stevedore-style artifact ID (informational) ---
