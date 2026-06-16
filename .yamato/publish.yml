@@ -1,0 +1,111 @@
+# Yamato jobs for the Unity Crashpad fork.
+#
+# publish_testing -- iterative builds, uploaded to Stevedore `testing`.
+#                    Testing artifacts are content-addressed by fork HEAD SHA
+#                    and distinguished by Stevedore's content hash, so no tag
+#                    is needed for the artifact itself. Setting TAG_TESTING=1
+#                    at trigger time additionally pushes a staging-YYYY.MM.DD-
+#                    <upstream-12char>[-N] tag -- used to exercise the tag-
+#                    and-push pipeline end-to-end without touching the
+#                    customer-facing `unity-*` namespace.
+#
+# publish_public  -- canonical release from unity/main. Builds, creates and
+#                    pushes a unity-YYYY.MM.DD-<upstream-12char>[-N] tag, then
+#                    uploads to Stevedore `public`. Customer-facing; public
+#                    artifacts are immutable.
+#
+# The `staging-*` and `unity-*` tag namespaces are deliberately non-overlapping
+# so the tag-and-push counter glob in each job sees only its own history.
+#
+# Both jobs are triggered manually by a res-crashes team member.
+
+publish_testing:
+  name: 'Build & Publish Crashpad to Stevedore (testing)'
+
+  agent:
+    image: automation-tooling/macos-15-arm64-unity:v2.5604104
+    type: Unity::VM::osx
+    flavor: b1.xlarge
+    model: M1
+
+  # TAG_TESTING: "0" (default) skips the tag-and-push step. Set to "1" at
+  # trigger time (via the Yamato "Run Job" dialog) to exercise the tag
+  # pipeline; tags use the `staging-` prefix and live in a namespace disjoint
+  # from customer-facing `unity-*` tags.
+  variables:
+    TAG_TESTING: "0"
+
+  commands:
+    - chmod +x .yamato/scripts/*.sh
+    - STEVEDORE_REPO=testing .yamato/scripts/build-and-pack.sh
+    - |
+      if [[ "${TAG_TESTING}" == "1" ]]; then
+          TAG_PREFIX=staging .yamato/scripts/tag-and-push.sh
+      else
+          echo "TAG_TESTING=${TAG_TESTING}; skipping tag-and-push."
+      fi
+    - STEVEDORE_REPO=testing .yamato/scripts/upload-to-stevedore.sh
+
+  # Required secret groups (configure in the Yamato project Settings UI):
+  #   - stevedore-upload-v2     : STEVEDORE_UPLOAD_TOOL_MAC_X64_URL
+  #   - crashpad-stevedore-key  : STEVEDORE_UPLOAD_KEY (must be authorized for testing)
+  #   - crashpad-github-push    : GH_PUSH_TOKEN (repo:write on the fork; only
+  #                               consumed when TAG_TESTING is set)
+
+  artifacts:
+    stevedore:
+      paths:
+        - out/dist/artifactids.txt
+        - out/dist/tag.txt
+    archives:
+      paths:
+        - out/dist/crashpad-unity-mac-arm64.7z
+        - out/dist/crashpad-unity-mac-x64.7z
+
+publish_public:
+  name: 'Build & Publish Crashpad to Stevedore (public)'
+
+  agent:
+    image: automation-tooling/macos-15-arm64-unity:v2.5604104
+    type: Unity::VM::osx
+    flavor: b1.xlarge
+    model: M1
+
+  commands:
+    # Guard: refuse to run unless HEAD is the tip of unity/main. The public
+    # Stevedore repo is immutable and customer-facing -- a wrong commit is
+    # permanent. To publish an emergency hotfix, merge to unity/main first.
+    - |
+      HEAD_SHA="$(git rev-parse HEAD)"
+      MAIN_SHA="$(git ls-remote origin refs/heads/unity/main | cut -f1)"
+      if [[ "$HEAD_SHA" != "$MAIN_SHA" ]]; then
+          echo "ERROR: publish_public must run from the tip of unity/main" >&2
+          echo "       HEAD       = $HEAD_SHA" >&2
+          echo "       unity/main = $MAIN_SHA" >&2
+          exit 1
+      fi
+    - chmod +x .yamato/scripts/*.sh
+    - STEVEDORE_REPO=public .yamato/scripts/build-and-pack.sh
+    - TAG_PREFIX=unity .yamato/scripts/tag-and-push.sh
+    - STEVEDORE_REPO=public .yamato/scripts/upload-to-stevedore.sh
+
+  # Required secret groups (configure in the Yamato project Settings UI):
+  #   - stevedore-upload-v2     : STEVEDORE_UPLOAD_TOOL_MAC_X64_URL
+  #   - crashpad-stevedore-key  : STEVEDORE_UPLOAD_KEY (must be authorized for public)
+  #   - crashpad-github-push    : GH_PUSH_TOKEN (repo:write on the fork)
+  #
+  # NOTE: STEVEDORE_UPLOAD_KEY for the public repo requires Stevedore-admin
+  # approval. Until that's provisioned, this job will fail at the final upload
+  # step. The git tag will still be created and pushed (it runs before upload),
+  # which is harmless: the tag is idempotent, so a re-run after the key is
+  # available will skip re-tagging and proceed to upload.
+
+  artifacts:
+    stevedore:
+      paths:
+        - out/dist/artifactids.txt
+        - out/dist/tag.txt
+    archives:
+      paths:
+        - out/dist/crashpad-unity-mac-arm64.7z
+        - out/dist/crashpad-unity-mac-x64.7z
