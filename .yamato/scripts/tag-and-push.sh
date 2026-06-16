@@ -12,8 +12,9 @@
 # tags share no glob with production and cannot pollute the production counter.
 #
 # <upstream-12char> is the 12-char short SHA of origin/main (pure upstream
-# mirror). The counter -N advances per upstream baseline, independent of date;
-# the first tag for a given upstream omits the suffix.
+# mirror). The counter -N advances per (date, upstream) pair: the first tag
+# of the day for a given upstream omits the suffix; same-day re-publishes
+# on the same upstream get -2, -3, etc.
 #
 # Idempotent: if any <prefix>-* tag already points at HEAD, exit cleanly
 # without pushing a duplicate. This lets the job be safely re-run after an
@@ -59,7 +60,7 @@ if [[ -n "$EXISTING_AT_HEAD" ]]; then
     exit 0
 fi
 
-# Counter: scan all tags ending in our upstream SHA, treating bare as N=1.
+# Counter: scan tags for today's (date, upstream) pair, treating bare as N=1.
 # Uses max-of-existing (not count) so deleted tags don't produce duplicates.
 MAX_N=0
 while IFS= read -r t; do
@@ -75,7 +76,7 @@ while IFS= read -r t; do
     if (( n > MAX_N )); then
         MAX_N=$n
     fi
-done < <(git tag -l "${TAG_PREFIX}-*-${UPSTREAM_HASH}" "${TAG_PREFIX}-*-${UPSTREAM_HASH}-*")
+done < <(git tag -l "${TAG_PREFIX}-${DATE}-${UPSTREAM_HASH}" "${TAG_PREFIX}-${DATE}-${UPSTREAM_HASH}-*")
 
 if (( MAX_N == 0 )); then
     TAG="${TAG_PREFIX}-${DATE}-${UPSTREAM_HASH}"
