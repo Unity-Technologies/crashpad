@@ -36,7 +36,7 @@
 #      headers carry mtime/uid/gid from the build filesystem. Apple's
 #      libtool has no deterministic-output flag; the fix is to post-process
 #      each staged .a, walking the 60-byte member headers and zeroing the
-#      mtime[12]/uid[6]/gid[6] fields. ~15 lines of Python, no deps.
+#      mtime[12]/uid[6]/gid[6] fields.
 # Neither fix is applied today because the current consumers don't require
 # reproducible byte-identical artifacts -- but if Stevedore deduplication
 # or supply-chain attestation ever becomes a requirement, those are the
