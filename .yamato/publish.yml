@@ -36,7 +36,7 @@ publish_testing:
     TAG_TESTING: "0"
 
   commands:
-    - chmod +x .yamato/scripts/*.sh .yamato/pack-stevedore.sh
+    - chmod +x .yamato/scripts/*.sh
     - STEVEDORE_REPO=testing .yamato/scripts/build-and-pack.sh
     - |
       if [[ "${TAG_TESTING}" == "1" ]]; then
@@ -84,7 +84,7 @@ publish_public:
           echo "       unity/main = $MAIN_SHA" >&2
           exit 1
       fi
-    - chmod +x .yamato/scripts/*.sh .yamato/pack-stevedore.sh
+    - chmod +x .yamato/scripts/*.sh
     - STEVEDORE_REPO=public .yamato/scripts/build-and-pack.sh
     - TAG_PREFIX=unity .yamato/scripts/tag-and-push.sh
     - STEVEDORE_REPO=public .yamato/scripts/upload-to-stevedore.sh

@@ -65,5 +65,5 @@ ninja -C out/x64-release
 
 # --- Pack ---
 export FORK_URL="https://github.com/Unity-Technologies/crashpad"
-"$SCRIPT_DIR/../pack-stevedore.sh"
+"$SCRIPT_DIR/pack-stevedore.sh"
 

@@ -18,7 +18,7 @@
 #   pack-stevedore.sh [OUTPUT_DIR]
 #
 # Environment overrides:
-#   CRASHPAD_SRC     path to the fork checkout      (default: this script's grandparent)
+#   CRASHPAD_SRC     path to the fork checkout      (default: two levels above this script)
 #   ARM64_BUILD      path to out/arm64-release      (default: $CRASHPAD_SRC/out/arm64-release)
 #   X64_BUILD        path to out/x64-release        (default: $CRASHPAD_SRC/out/x64-release)
 #   FORK_URL         URL of the Unity Crashpad fork (default: placeholder)
@@ -28,7 +28,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CRASHPAD_SRC="${CRASHPAD_SRC:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+CRASHPAD_SRC="${CRASHPAD_SRC:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 ARM64_BUILD="${ARM64_BUILD:-$CRASHPAD_SRC/out/arm64-release}"
 X64_BUILD="${X64_BUILD:-$CRASHPAD_SRC/out/x64-release}"
 OUTPUT_DIR="${1:-$CRASHPAD_SRC/out/dist}"
