@@ -35,16 +35,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CRASHPAD_SRC="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$CRASHPAD_SRC"
 
-# Auth via URL-embedded Basic credentials (token-as-password, x-access-token
-# as username -- the standard GitHub pattern). This works on all agent
-# variants we've seen: with insteadOf, the host gets rewritten to the
-# bandwidth cache, which accepts Basic Auth fine; with pushInsteadOf, the
-# push lands direct on github.com, which also accepts it. We previously
-# tried `http.extraheader: Bearer` but the cache 403s that specific scheme.
-#
-# `credential.helper=` (empty) disables any inherited credential helper so
-# git doesn't try to cache the embedded creds (the agent's macOS Keychain
-# helper fails with -25308 on locked keychain; harmless, just log noise).
+# URL-embedded Basic Auth, not http.extraheader Bearer: the bandwidth cache
+# that fronts github.com on some agents 403s Bearer but accepts Basic.
+# credential.helper= clears any inherited helper so git doesn't try to
+# cache the embedded creds in the OS keychain.
 FORK_URL_AUTHED="https://x-access-token:${GH_PUSH_TOKEN}@github.com/Unity-Technologies/crashpad"
 GIT=(git -c credential.helper=)
 
