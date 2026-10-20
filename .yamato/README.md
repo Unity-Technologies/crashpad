@@ -106,6 +106,34 @@ Notes:
 
 ---
 
+## Building for Linux (proof of concept)
+
+Tested target: Ubuntu 24.04 (including WSL2), x64. Install prerequisites:
+
+```bash
+sudo apt install -y git curl ca-certificates python3 build-essential clang \
+    zlib1g-dev libcurl4-openssl-dev p7zip-full
+```
+
+The checkout directory must be named `crashpad` (gclient `DEPS` paths are
+relative to the `.gclient` parent). Then:
+
+```bash
+.yamato/scripts/build-linux.sh          # gclient sync + gn gen + ninja -> out/linux-x64-release
+.yamato/scripts/pack-stevedore-linux.sh # -> out/dist/crashpad-unity-linux-x64.7z
+```
+
+`build-linux.sh` uses depot_tools from `$PATH` if `gn` is found, otherwise
+clones it into `$DEPOT_TOOLS` (default `~/depot_tools`). It builds with the
+system clang; Unity's Linux toolchain uses a glibc 2.35 sysroot, so libraries
+built against a newer glibc may not link into the Editor.
+
+The Linux archive differs from the macOS one: there is no `libmig_output.a`,
+no `gen/` or `src/`, `libcompat.a` is added, and `NOTICE` also surfaces the
+linux-syscall-support (BSD-3-Clause) license.
+
+---
+
 ## Packing the Stevedore artifact
 
 ```bash
