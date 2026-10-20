@@ -116,17 +116,30 @@ sudo apt install -y git curl ca-certificates python3 build-essential clang \
 ```
 
 The checkout directory must be named `crashpad` (gclient `DEPS` paths are
-relative to the `.gclient` parent). Then:
+relative to the `.gclient` parent).
+
+Libraries for the Unity Linux Editor must be built against Unity's glibc 2.35
+sysroot. Unpack the SDK artifact listed in the Unity repo's
+`Platforms/Linux/Bee.Toolchain.Linux/manifest.stevedore` (from a Unity checkout):
 
 ```bash
-.yamato/scripts/build-linux.sh          # gclient sync + gn gen + ninja -> out/linux-x64-release
-.yamato/scripts/pack-stevedore-linux.sh # -> out/dist/crashpad-unity-linux-x64.7z
+./Tools/Bee/bee steve internal-unpack public unity-linux-gnu-x86_64-sdk/<version>_<sha>.tar.zst ~/unity-linux-sdk
+```
+
+Then:
+
+```bash
+UNITY_LINUX_SDK=~/unity-linux-sdk .yamato/scripts/build-linux.sh  # -> out/linux-x64-release
+.yamato/scripts/pack-stevedore-linux.sh                           # -> out/dist/crashpad-unity-linux-x64.7z
 ```
 
 `build-linux.sh` uses depot_tools from `$PATH` if `gn` is found, otherwise
-clones it into `$DEPOT_TOOLS` (default `~/depot_tools`). It builds with the
-system clang; Unity's Linux toolchain uses a glibc 2.35 sysroot, so libraries
-built against a newer glibc may not link into the Editor.
+clones it into `$DEPOT_TOOLS` (default `~/depot_tools`). With
+`UNITY_LINUX_SDK` it compiles with the system clang against the SDK sysroot
+(`--target=x86_64-unity-linux-gnu --gcc-toolchain=<sdk>`), copies libcurl
+headers from the host package (override with `CURL_INCLUDE`), and defines
+`SYS_memfd_create`, which the sysroot's 3.14 kernel headers lack. Without it,
+the build uses the host glibc and the libraries do not link into the Editor.
 
 The Linux archive differs from the macOS one: there is no `libmig_output.a`,
 no `gen/` or `src/`, `libcompat.a` is added, and `NOTICE` also surfaces the
