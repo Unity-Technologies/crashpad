@@ -7,7 +7,7 @@
 # Checks:
 #   1. libhandler.a carries the Unity hook and its Linux call site.
 #   2. The handler and client compile and link against Unity's sysroot.
-#   3. Neither binary needs a glibc newer than 2.35.
+#   3. Neither binary needs a glibc newer than 2.35 or has an executable stack.
 #   4. A crash produces a minidump and calls the hook with the crashed pid.
 #
 # Usage:
@@ -62,7 +62,7 @@ FLAGS=(
     -stdlib=libstdc++ -m64 -pthread
 )
 CXXFLAGS=(
-    "${FLAGS[@]}" "-std=$CXX_STD" -O2
+    "${FLAGS[@]}" "-std=$CXX_STD" -O2 -fno-rtti -fexceptions
     -DNDEBUG -DCRASHPAD_ZLIB_SOURCE_SYSTEM
     -I"$A/include" -I"$A/include/compat/linux" -I"$A/include/compat/non_win"
 )
@@ -169,7 +169,7 @@ done
 link_binary() {
     local out="$1"; shift
     "$CXX" "${FLAGS[@]}" "$@" -Wl,--start-group "${LIBS[@]}" -Wl,--end-group \
-        -lz -ldl -o "$out" -Wl,--trace > "$out.trace"
+        -lz -ldl -Wl,-z,noexecstack -o "$out" -Wl,--trace > "$out.trace"
     grep -E '/libc\.so|/libstdc\+\+' "$out.trace" | sed 's/^/    /'
     if grep -E '/libc\.so' "$out.trace" | grep -qv "$SYSROOT"; then
         echo "ERROR: $out linked against a libc outside the sysroot" >&2
@@ -180,8 +180,12 @@ link_binary "$work/handler" "$work/obj/handler_main.o" "${handler_objs[@]}"
 link_binary "$work/client" "$work/obj/client_main.o" "$work/obj/client_pthread_create_linux.cc.o"
 echo "    OK"
 
-echo "==> 3. glibc ceiling"
+echo "==> 3. glibc ceiling and stack"
 for bin in handler client; do
+    if readelf -lW "$work/$bin" | grep GNU_STACK | grep -q RWE; then
+        echo "ERROR: $bin has an executable stack" >&2
+        exit 1
+    fi
     max="$(objdump -T "$work/$bin" | grep -o 'GLIBC_[0-9.]*' | sort -Vu | tail -1)"
     echo "    $bin: $max"
     if [[ "$(printf '%s\nGLIBC_2.35\n' "$max" | sort -V | tail -1)" != "GLIBC_2.35" ]]; then

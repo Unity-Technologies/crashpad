@@ -185,7 +185,8 @@ Compiling src/:
   src/client/pthread_create_linux.cc is optional: it interposes pthread_create
   so that every thread gets an alternate signal stack.
 
-Linking: all libraries except libhandler.a, then -lz -ldl -pthread.
+Linking: all libraries except libhandler.a, then -lz -ldl -pthread, and
+  -Wl,-z,noexecstack: crashpad_info_note.S (in libcommon.a) has no .note.GNU-stack.
 EOF
 
 mkdir -p "$stage/include"
