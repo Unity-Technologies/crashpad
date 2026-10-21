@@ -135,11 +135,19 @@ UNITY_LINUX_SDK=~/unity-linux-sdk .yamato/scripts/build-linux.sh  # -> out/linux
 
 `build-linux.sh` uses depot_tools from `$PATH` if `gn` is found, otherwise
 clones it into `$DEPOT_TOOLS` (default `~/depot_tools`). With
-`UNITY_LINUX_SDK` it compiles with the system clang against the SDK sysroot
-(`--target=x86_64-unity-linux-gnu --gcc-toolchain=<sdk>`), copies libcurl
-headers from the host package (override with `CURL_INCLUDE`), and defines
+`UNITY_LINUX_SDK` it compiles against the SDK sysroot
+(`--target=x86_64-unity-linux-gnu --gcc-toolchain=<sdk>`) and defines
 `SYS_memfd_create`, which the sysroot's 3.14 kernel headers lack. Without it,
 the build uses the host glibc and the libraries do not link into the Editor.
+
+Optional inputs, both Stevedore artifacts listed in the Unity repo:
+
+- `UNITY_CLANG`: an unpacked `llvm-*-linux-x64` toolchain, passed to GN as
+  `clang_path` (it must contain `bin/clang`, `bin/clang++` and `bin/llvm-ar`).
+  Without it, `clang`, `clang++` and `ar` come from `PATH`.
+- `CURL_INCLUDE`: a directory containing `curl/curl.h`, or an unpacked
+  `libcurl-headers` artifact (searched for `curl/curl.h`). Without it, the
+  headers are copied from the host `libcurl4-openssl-dev` package.
 
 The Linux archive differs from the macOS one: there is no `libmig_output.a`,
 no `gen/` or `src/`, `libcompat.a` is added, and `NOTICE` also surfaces the

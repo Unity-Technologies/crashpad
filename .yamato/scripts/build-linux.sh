@@ -10,7 +10,10 @@
 #   UNITY_LINUX_SDK  unpacked unity-linux-gnu-x86_64-sdk Stevedore artifact. When set,
 #                    builds against Unity's glibc 2.35 sysroot (required for libraries
 #                    the Unity Linux Editor can link). Unset = host sysroot.
-#   CURL_INCLUDE     directory containing curl/curl.h, used with UNITY_LINUX_SDK
+#   UNITY_CLANG      unpacked llvm-*-linux-x64 Stevedore artifact (needs bin/clang,
+#                    bin/clang++, bin/llvm-ar). Unset = clang/ar from PATH.
+#   CURL_INCLUDE     directory containing curl/curl.h, or an unpacked libcurl-headers
+#                    Stevedore artifact, used with UNITY_LINUX_SDK
 #                    (default: copied from the libcurl4-openssl-dev package)
 #   DEPOT_TOOLS      depot_tools location if gn is not on PATH (default: ~/depot_tools)
 #
@@ -19,7 +22,20 @@ set -euxo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CRASHPAD_SRC="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-for tool in clang clang++ ar python3; do
+if [[ -n "${UNITY_CLANG:-}" ]]; then
+    UNITY_CLANG="$(cd "$UNITY_CLANG" && pwd)"
+    for tool in clang clang++ llvm-ar; do
+        if [[ ! -x "$UNITY_CLANG/bin/$tool" ]]; then
+            echo "ERROR: $UNITY_CLANG/bin/$tool not found (GN's clang_path expects bin/{clang,clang++,llvm-ar})" >&2
+            exit 1
+        fi
+    done
+    "$UNITY_CLANG/bin/clang" --version
+    REQUIRED_TOOLS=(python3)
+else
+    REQUIRED_TOOLS=(clang clang++ ar python3)
+fi
+for tool in "${REQUIRED_TOOLS[@]}"; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         echo "ERROR: $tool not found on PATH" >&2
         exit 1
@@ -67,6 +83,9 @@ fi
 cd "$CRASHPAD_SRC"
 
 GN_ARGS='is_debug=false target_cpu="x64"'
+if [[ -n "${UNITY_CLANG:-}" ]]; then
+    GN_ARGS+=" clang_path=\"$UNITY_CLANG\""
+fi
 
 if [[ -n "${UNITY_LINUX_SDK:-}" ]]; then
     UNITY_LINUX_SDK="$(cd "$UNITY_LINUX_SDK" && pwd)"
@@ -77,6 +96,12 @@ if [[ -n "${UNITY_LINUX_SDK:-}" ]]; then
     fi
 
     # The SDK sysroot has no libcurl headers; crashpad only needs them to compile (libcurl is dlopen()ed).
+    if [[ -n "${CURL_INCLUDE:-}" && ! -f "$CURL_INCLUDE/curl/curl.h" ]]; then
+        CURL_H="$(find "$CURL_INCLUDE" -path '*/curl/curl.h' -print -quit)"
+        if [[ -n "$CURL_H" ]]; then
+            CURL_INCLUDE="$(dirname "$(dirname "$CURL_H")")"
+        fi
+    fi
     if [[ -z "${CURL_INCLUDE:-}" ]]; then
         CURL_H="$(dpkg -L libcurl4-openssl-dev | grep '/curl/curl.h$')"
         CURL_INCLUDE="$CRASHPAD_SRC/out/curl-include"
@@ -88,6 +113,7 @@ if [[ -n "${UNITY_LINUX_SDK:-}" ]]; then
         echo "ERROR: curl/curl.h not found under $CURL_INCLUDE" >&2
         exit 1
     fi
+    CURL_INCLUDE="$(cd "$CURL_INCLUDE" && pwd)"
 
     TARGET_FLAGS="--target=x86_64-unity-linux-gnu --gcc-toolchain=$UNITY_LINUX_SDK"
     # The sysroot's kernel headers (3.14) predate memfd_create (3.17); 319 is its x86_64 syscall number.
