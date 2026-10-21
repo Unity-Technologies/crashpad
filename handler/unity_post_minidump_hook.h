@@ -9,10 +9,24 @@
 #define CRASHPAD_HANDLER_UNITY_POST_MINIDUMP_HOOK_H_
 
 #include "base/files/file_path.h"
+#include "build/build_config.h"
 #include "util/misc/uuid.h"
+
+#if BUILDFLAG(IS_APPLE)
 #include <mach/mach.h>
+#else
+#include <sys/types.h>
+#endif
 
 namespace crashpad {
+
+//! \brief The crashed process as seen by the handler: its Mach task on macOS,
+//!     its process ID on Linux and Android.
+#if BUILDFLAG(IS_APPLE)
+using UnityCrashedProcess = task_t;
+#else
+using UnityCrashedProcess = pid_t;
+#endif
 
 //! \brief Optional callback invoked immediately after minidump generation.
 //!
@@ -21,7 +35,7 @@ namespace crashpad {
 //! unity_post_minidump_hook.cc.
 extern void (*UnityCrashpadPostMinidumpHook)(const base::FilePath& database_path,
                                             const UUID& report_id,
-                                            task_t crashed_task);
+                                            UnityCrashedProcess crashed_process);
 
 }  // namespace crashpad
 

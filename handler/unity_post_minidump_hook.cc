@@ -11,6 +11,7 @@ namespace crashpad {
 
 void (*UnityCrashpadPostMinidumpHook)(const base::FilePath& database_path,
                                      const UUID& report_id,
-                                     task_t crashed_task) = nullptr;
+                                     UnityCrashedProcess crashed_process) =
+    nullptr;
 
 }  // namespace crashpad

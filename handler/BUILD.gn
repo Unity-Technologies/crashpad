@@ -15,6 +15,8 @@
 # MODIFICATION HISTORY:
 # 2026-JUN-09 - Unity modification: added unity_post_minidump_hook.{cc,h} to
 #               the mac sources of the handler static_library.
+# 2026-OCT-21 - Unity modification: added unity_post_minidump_hook.{cc,h} to
+#               the linux and android sources of the handler static_library.
 # Licensed under the Apache License, Version 2.0
 
 import("../build/crashpad_buildconfig.gni")
@@ -81,6 +83,8 @@ if (!crashpad_is_ios) {
         "linux/crash_report_exception_handler.h",
         "linux/exception_handler_server.cc",
         "linux/exception_handler_server.h",
+        "unity_post_minidump_hook.cc",
+        "unity_post_minidump_hook.h",
       ]
     }
 

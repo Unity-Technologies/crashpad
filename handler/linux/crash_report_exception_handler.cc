@@ -12,7 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/*
+ * MODIFICATION HISTORY:
+ * 2026-OCT-21 - Unity modification: invoke UnityCrashpadPostMinidumpHook (when
+ *               set) immediately after a minidump is finalized so Unity can
+ *               post-process the report.
+ * Licensed under the Apache License, Version 2.0
+ */
+
 #include "handler/linux/crash_report_exception_handler.h"
+#include "handler/unity_post_minidump_hook.h"
 
 #include <memory>
 #include <utility>
@@ -266,6 +275,12 @@ bool CrashReportExceptionHandler::WriteMinidumpToDatabase(
     Metrics::ExceptionCaptureResult(
         Metrics::CaptureResult::kFinishedWritingCrashReportFailed);
     return false;
+  }
+
+  if (UnityCrashpadPostMinidumpHook) {
+    base::FilePath database_path = database_->DatabasePath();
+    UnityCrashpadPostMinidumpHook(
+        database_path, uuid, process_snapshot->ProcessID());
   }
 
   if (upload_thread_) {
