@@ -14,7 +14,10 @@ headers that Unity consumes via Stevedore.
 │   ├── build-and-pack.sh        # depot_tools bootstrap + gclient sync + build + pack
 │   ├── pack-stevedore.sh        # Builds the Stevedore artifact from local ninja output
 │   ├── tag-and-push.sh          # compute & push unity-YYYY.MM.DD-<upstream-12char>[-N] tag
-│   └── upload-to-stevedore.sh   # StevedoreUpload invocation
+│   ├── upload-to-stevedore.sh   # StevedoreUpload invocation
+│   ├── build-linux.sh           # Linux x64 build (proof of concept)
+│   ├── pack-stevedore-linux.sh  # Linux x64 Stevedore artifact
+│   └── check-linux-artifact.sh  # Builds a minimal handler from the Linux artifact and crashes a client
 └── README.md           # this file
 ```
 
@@ -149,9 +152,20 @@ Optional inputs, both Stevedore artifacts listed in the Unity repo:
   `libcurl-headers` artifact (searched for `curl/curl.h`). Without it, the
   headers are copied from the host `libcurl4-openssl-dev` package.
 
-The Linux archive differs from the macOS one: there is no `libmig_output.a`,
-no `gen/` or `src/`, `libcompat.a` is added, and `NOTICE` also surfaces the
-linux-syscall-support (BSD-3-Clause) license.
+To check the archive the way Unity consumes it (a handler built from `src/`
+plus every library except `libhandler.a`, a client that crashes, and the
+hook being called):
+
+```bash
+UNITY_LINUX_SDK=~/unity-linux-sdk .yamato/scripts/check-linux-artifact.sh
+```
+
+The Linux archive differs from the macOS one: there is no `libmig_output.a`
+or `gen/`, `libcompat.a` is added, `src/` has the Linux handler sources plus
+`client/pthread_create_linux.cc`, `include/` also has
+`third_party/zlib/zlib_crashpad.h`, and `NOTICE` also surfaces the
+linux-syscall-support (BSD-3-Clause) license and lists zlib and libcurl as
+used but not bundled.
 
 ---
 
