@@ -107,8 +107,13 @@ if [[ ! -d "$build_dir" ]]; then
     exit 1
 fi
 
+# gn wraps long values onto the next line after "=".
 gn_arg() {
-    sed -n "s/^$1 = \"\(.*\)\"\$/\1/p" "$build_dir/args.gn"
+    awk -v name="$1" '$0 ~ "^" name " =" {
+        v = $0
+        if (v ~ /= *$/) { getline next_line; v = v next_line }
+        sub(/^[^=]*= */, "", v); sub(/^"/, "", v); sub(/" *$/, "", v); print v
+    }' "$build_dir/args.gn"
 }
 clang_path="$(gn_arg clang_path)"
 COMPILER_VERSION="$("${clang_path:+$clang_path/bin/}clang" --version | head -1)"
