@@ -15,7 +15,8 @@
 #
 # Environment:
 #   UNITY_LINUX_SDK  unpacked unity-linux-gnu-x86_64-sdk Stevedore artifact (required)
-#   UNITY_CLANG      unpacked llvm-*-linux-x64 Stevedore artifact (default: clang++ from PATH)
+#   UNITY_CLANG      unpacked llvm-linux-x64 (clang 15, what the Editor uses) or
+#                    llvm-21-linux-x64 Stevedore artifact (default: clang++ from PATH)
 #   CXX_STD          C++ standard for src/ (default: c++20)
 #   KEEP_WORK=1      keep the work directory
 #

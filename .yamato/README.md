@@ -145,7 +145,7 @@ the build uses the host glibc and the libraries do not link into the Editor.
 
 Optional inputs, both Stevedore artifacts listed in the Unity repo:
 
-- `UNITY_CLANG`: an unpacked `llvm-*-linux-x64` toolchain, passed to GN as
+- `UNITY_CLANG`: an unpacked `llvm-linux-x64` (clang 15) or `llvm-21-linux-x64` toolchain, passed to GN as
   `clang_path` (it must contain `bin/clang`, `bin/clang++` and `bin/llvm-ar`).
   Without it, `clang`, `clang++` and `ar` come from `PATH`.
 - `CURL_INCLUDE`: a directory containing `curl/curl.h`, or an unpacked

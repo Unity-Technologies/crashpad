@@ -10,7 +10,7 @@
 #   UNITY_LINUX_SDK  unpacked unity-linux-gnu-x86_64-sdk Stevedore artifact. When set,
 #                    builds against Unity's glibc 2.35 sysroot (required for libraries
 #                    the Unity Linux Editor can link). Unset = host sysroot.
-#   UNITY_CLANG      unpacked llvm-*-linux-x64 Stevedore artifact (needs bin/clang,
+#   UNITY_CLANG      unpacked llvm-linux-x64 or llvm-21-linux-x64 Stevedore artifact (needs bin/clang,
 #                    bin/clang++, bin/llvm-ar). Unset = clang/ar from PATH.
 #   CURL_INCLUDE     directory containing curl/curl.h, or an unpacked libcurl-headers
 #                    Stevedore artifact, used with UNITY_LINUX_SDK
